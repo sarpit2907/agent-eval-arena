@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Upload as UploadIcon, FileText, AlertCircle, Zap, Sparkles } from 'lucide-react';
+import { Upload as UploadIcon, FileText, AlertCircle, Zap, Sparkles, XCircle } from 'lucide-react';
 import { useEvaluationStore } from '@/store/useEvaluationStore';
 import { parseJsonFile, normalizeResponse } from '@/lib/dataUtils';
 import { createApiClient } from '@/lib/api';
@@ -213,29 +213,75 @@ export default function Upload() {
             {selectedCategory && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Agents</label>
-                <Select
-                  value={selectedAgents.join(',')}
-                  onValueChange={(value) => setSelectedAgents(value ? value.split(',') : [])}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select agents to evaluate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableAgents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="border rounded-lg p-4 space-y-3">
+                  {availableAgents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No agents available for this category</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedAgents(availableAgents.map(a => a.id))}
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedAgents([])}
+                        >
+                          Clear All
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          {selectedAgents.length} selected
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {availableAgents.map((agent) => (
+                          <div key={agent.id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={agent.id}
+                              checked={selectedAgents.includes(agent.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedAgents([...selectedAgents, agent.id]);
+                                } else {
+                                  setSelectedAgents(selectedAgents.filter(id => id !== agent.id));
+                                }
+                              }}
+                              className="h-4 w-4 rounded border-border text-primary focus:ring-primary focus:ring-2"
+                            />
+                            <label 
+                              htmlFor={agent.id}
+                              className="text-sm font-medium cursor-pointer flex-1"
+                            >
+                              {agent.name}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
                 
                 {selectedAgents.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {selectedAgents.map((agentId) => {
                       const agent = agents.find(a => a.id === agentId);
                       return agent ? (
-                        <Badge key={agentId} variant="secondary">
-                          {agent.name}
+                        <Badge key={agentId} variant="secondary" className="flex items-center space-x-1">
+                          <span>{agent.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAgents(selectedAgents.filter(id => id !== agentId))}
+                            className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                          >
+                            <XCircle className="h-3 w-3" />
+                          </button>
                         </Badge>
                       ) : null;
                     })}
