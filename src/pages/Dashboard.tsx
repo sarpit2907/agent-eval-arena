@@ -32,7 +32,9 @@ import {
   XCircle, 
   Search,
   ExternalLink,
-  Eye
+  Eye,
+  BarChart3,
+  Upload
 } from 'lucide-react';
 import { useEvaluationStore } from '@/store/useEvaluationStore';
 import { formatScore, getUniqueValues } from '@/lib/dataUtils';
@@ -47,10 +49,88 @@ export default function Dashboard() {
 
   const apiClient = createApiClient(settings.baseUrl);
 
-  // Redirect to upload if no data
+  // Show empty state if no data instead of redirecting
   if (!evaluationResult) {
-    navigate('/');
-    return null;
+    return (
+      <Layout title="Dashboard">
+        <div className="space-y-8">
+          {/* Empty State */}
+          <Card className="shadow-card">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <BarChart3 className="h-16 w-16 text-muted-foreground mb-4" />
+              <h2 className="text-2xl font-bold mb-2">No Evaluation Data</h2>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                Upload your agent evaluation data and run an evaluation to see comprehensive 
+                performance metrics, leaderboards, and detailed analysis here.
+              </p>
+              <Button onClick={() => navigate('/')} className="shadow-elegant">
+                <Upload className="mr-2 h-4 w-4" />
+                Start Your First Evaluation
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Preview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 opacity-50">
+            <Card className="shadow-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">--</div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">--%</div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Successful</CardTitle>
+                <CheckCircle className="h-4 w-4 text-success" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-muted-foreground">--</div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Failed</CardTitle>
+                <XCircle className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-muted-foreground">--</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Preview Table */}
+          <Card className="shadow-card opacity-50">
+            <CardHeader>
+              <CardTitle>Leaderboard Preview</CardTitle>
+              <CardDescription>
+                Agent performance metrics will appear here after evaluation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-muted-foreground">
+                <Trophy className="mx-auto h-12 w-12 mb-4" />
+                <p>Leaderboard will show agent rankings and detailed scores</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
   }
 
   const { evaluation_summary, agent_results } = evaluationResult;
