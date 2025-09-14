@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Upload as UploadIcon, FileText, AlertCircle, Zap, Sparkles, XCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Upload as UploadIcon, FileText, AlertCircle, Zap, Sparkles, XCircle, Edit3 } from 'lucide-react';
 import { useEvaluationStore } from '@/store/useEvaluationStore';
 import { parseJsonFile, normalizeResponse } from '@/lib/dataUtils';
 import { createApiClient } from '@/lib/api';
@@ -31,6 +33,8 @@ export default function Upload() {
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any[] | null>(null);
+  const [manualPrompt, setManualPrompt] = useState('');
+  const [inputMode, setInputMode] = useState<'file' | 'manual'>('file');
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -67,20 +71,46 @@ export default function Upload() {
   });
 
   const handleSubmit = async () => {
-    if (!parsedData || !selectedCategory || selectedAgents.length === 0) {
-      toast({
-        title: "Missing information",
-        description: "Please upload a file, select a category, and choose agents.",
-        variant: "destructive",
+    let dataToProcess: any[] = [];
+    
+    if (inputMode === 'file') {
+      if (!parsedData || !selectedCategory || selectedAgents.length === 0) {
+        toast({
+          title: "Missing information",
+          description: "Please upload a file, select a category, and choose agents.",
+          variant: "destructive",
+        });
+        return;
+      }
+      dataToProcess = parsedData;
+    } else {
+      if (!manualPrompt.trim() || !selectedCategory || selectedAgents.length === 0) {
+        toast({
+          title: "Missing information",
+          description: "Please enter a prompt, select a category, and choose agents.",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Create a single test case from manual input
+      dataToProcess = selectedAgents.map(agentId => {
+        const agent = agents.find(a => a.id === agentId);
+        return {
+          agent: agentId,
+          agent_name: agent?.name || agentId,
+          prompt: manualPrompt.trim(),
+          query: manualPrompt.trim(),
+          response: `Response from ${agent?.name || agentId}`, // Placeholder response
+          output: `Response from ${agent?.name || agentId}`, // Placeholder response
+        };
       });
-      return;
     }
 
     setLoading(true);
     
     try {
       const apiClient = createApiClient(settings.baseUrl);
-      const normalizedResponses = parsedData.map(normalizeResponse);
+      const normalizedResponses = dataToProcess.map(normalizeResponse);
       
       // Filter responses based on selected agents
       const filteredResponses = normalizedResponses.filter(response => 
@@ -134,53 +164,92 @@ export default function Upload() {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <UploadIcon className="h-5 w-5" />
-              <span>Upload Evaluation Data</span>
+              <span>Input Data</span>
             </CardTitle>
             <CardDescription>
-              Upload your JSONL or JSON file containing agent responses for evaluation
+              Upload a file or manually enter a prompt for agent evaluation
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div
-              {...getRootProps()}
-              className={`
-                border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-smooth
-                ${isDragActive 
-                  ? 'border-primary bg-primary/5 shadow-glow' 
-                  : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                }
-              `}
-            >
-              <input {...getInputProps()} />
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              {isDragActive ? (
-                <p className="text-lg font-medium text-primary">Drop your file here...</p>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-lg font-medium">Drag & drop your file here</p>
-                  <p className="text-sm text-muted-foreground">
-                    Supports .json and .jsonl files
-                  </p>
-                  <Button variant="outline" className="mt-4">
-                    Choose File
-                  </Button>
+            <Tabs value={inputMode} onValueChange={(value) => setInputMode(value as 'file' | 'manual')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="file" className="flex items-center space-x-2">
+                  <FileText className="h-4 w-4" />
+                  <span>Upload File</span>
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="flex items-center space-x-2">
+                  <Edit3 className="h-4 w-4" />
+                  <span>Manual Input</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="file" className="mt-4">
+                <div
+                  {...getRootProps()}
+                  className={`
+                    border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-smooth
+                    ${isDragActive 
+                      ? 'border-primary bg-primary/5 shadow-glow' 
+                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                    }
+                  `}
+                >
+                  <input {...getInputProps()} />
+                  <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  {isDragActive ? (
+                    <p className="text-lg font-medium text-primary">Drop your file here...</p>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-lg font-medium">Drag & drop your file here</p>
+                      <p className="text-sm text-muted-foreground">
+                        Supports .json and .jsonl files
+                      </p>
+                      <Button variant="outline" className="mt-4">
+                        Choose File
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            
-            {uploadedFile && (
-              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-success" />
-                    <span className="font-medium">{uploadedFile.name}</span>
-                    <Badge variant="secondary">
-                      {parsedData?.length || 0} responses
-                    </Badge>
+                
+                {uploadedFile && (
+                  <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-4 w-4 text-success" />
+                        <span className="font-medium">{uploadedFile.name}</span>
+                        <Badge variant="secondary">
+                          {parsedData?.length || 0} responses
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="manual" className="mt-4">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Enter your prompt</label>
+                    <Textarea
+                      value={manualPrompt}
+                      onChange={(e) => setManualPrompt(e.target.value)}
+                      placeholder="Enter the prompt you want to evaluate your agents with..."
+                      className="min-h-32 resize-y"
+                    />
+                  </div>
+                  {manualPrompt.trim() && (
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <Edit3 className="h-4 w-4 text-success" />
+                        <span className="text-sm font-medium">
+                          Ready to evaluate {selectedAgents.length} agents with your custom prompt
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
@@ -310,12 +379,19 @@ export default function Upload() {
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <AlertCircle className="h-4 w-4" />
                 <span>
-                  Ready to evaluate {selectedAgents.length} agents with {parsedData?.length || 0} test cases
+                  Ready to evaluate {selectedAgents.length} agents with {
+                    inputMode === 'file' 
+                      ? `${parsedData?.length || 0} test cases`
+                      : 'custom prompt'
+                  }
                 </span>
               </div>
               <Button
                 onClick={handleSubmit}
-                disabled={!parsedData || !selectedCategory || selectedAgents.length === 0}
+                disabled={
+                  (inputMode === 'file' && (!parsedData || !selectedCategory || selectedAgents.length === 0)) ||
+                  (inputMode === 'manual' && (!manualPrompt.trim() || !selectedCategory || selectedAgents.length === 0))
+                }
                 className="shadow-elegant"
               >
                 <Zap className="mr-2 h-4 w-4" />
